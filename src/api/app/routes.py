@@ -2,12 +2,13 @@
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 import httpx
 
 from .config import Settings, get_settings
 from .neis_client import NeisClient
-from .schemas import MealSearchResponse, SchoolSearchResponse
+from .database import AnalysisRepository
+from .schemas import AnalysisCreate, AnalysisResponse, MealSearchResponse, SchoolSearchResponse
 from .services import MealService, SchoolService
 
 
@@ -16,6 +17,10 @@ router = APIRouter(prefix="/api")
 
 def get_neis_client(settings: Settings = Depends(get_settings)) -> NeisClient:
     return NeisClient(settings)
+
+
+def get_analysis_repository(settings: Settings = Depends(get_settings)) -> AnalysisRepository:
+    return AnalysisRepository(settings.database_path)
 
 
 @router.get("/health", tags=["operations"])
@@ -52,6 +57,34 @@ async def search_meals(
         meals=meals,
     )
 
+
+@router.post("/analyses", response_model=AnalysisResponse, status_code=status.HTTP_201_CREATED, tags=["analyses"])
+async def create_analysis(
+    request: AnalysisCreate,
+    repository: AnalysisRepository = Depends(get_analysis_repository),
+) -> AnalysisResponse:
+    """전문 에이전트 결과와 최종 비교 결과를 원자적으로 저장한다."""
+    school_codes = {request.school_a.school_code, request.school_b.school_code}
+    if any(result.school_code not in school_codes for result in request.agent_results):
+        raise HTTPException(status_code=400, detail={"code": "INVALID_SCHOOL", "message": "분석 대상이 아닌 학교 결과가 포함되었습니다."})
+    analysis_id = repository.create(request)
+    saved = repository.get(analysis_id)
+    if saved is None:
+        raise HTTPException(status_code=500, detail={"code": "PERSISTENCE_ERROR", "message": "분석 결과를 저장하지 못했습니다."})
+    return saved
+
+
+@router.get("/analyses/{analysis_id}", response_model=AnalysisResponse, tags=["analyses"])
+async def get_analysis(
+    analysis_id: int,
+    repository: AnalysisRepository = Depends(get_analysis_repository),
+) -> AnalysisResponse:
+    """완료된 분석을 학교·일자·에이전트 결과와 함께 조회한다."""
+    result = repository.get(analysis_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail={"code": "ANALYSIS_NOT_FOUND", "message": "분석 결과를 찾을 수 없습니다."})
+    return result
+
 @router.get("/timetable", tags=["timetable"])
 async def search_timetable(
     edu_office_code: str = Query(...),
@@ -87,4 +120,3 @@ async def search_timetable(
     rows = root[1].get("row", []) if len(root) > 1 else []
     periods = [{"period": row.get("PERIO"), "subject": row.get("ITRT_CNTNT", ""), "teacher": row.get("TEACHER", "")} for row in rows]
     return {"date": date_ymd, "periods": periods}
-

@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     neis_base_url: str = "https://open.neis.go.kr"
     cors_allow_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     request_timeout_seconds: float = 15.0
+    database_path: str = "data/analysis.db"
 
     @property
     def cors_allow_origin_list(self) -> list[str]:

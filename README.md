@@ -45,7 +45,7 @@ NEIS 공개 API를 활용해 초중고 급식 메뉴를 조회하고 AI 에이�
 | 08   | [MCP 서버 구현](docs/08-implement-mcp.md)                                    |
 | 09   | [에이전트 분석 평가 항목 정의](docs/09-define-evaluation-rubric.md)          |
 | 10   | [멀티 에이전트 워크플로우 구현](docs/10-implement-agent-workflow.md)         |
-| 11   | [데이터베이스 연동](docs/11-integrate-database.md) (작성 예정)               |
+| 11   | [데이터베이스 연동](docs/11-integrate-database.md)                           |
 
 ## 저장소 구성
 

@@ -6,6 +6,8 @@
 
 from datetime import date
 
+from typing import Any, Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -46,3 +48,29 @@ class MealSearchResponse(BaseModel):
 class ErrorBody(BaseModel):
     code: str
     message: str
+
+
+class AgentResult(BaseModel):
+    """병렬 전문 평가 에이전트 한 개의 구조화된 결과."""
+
+    school_code: str
+    agent_name: str = Field(..., min_length=1)
+    score: int = Field(..., ge=1, le=5)
+    analysis: str
+    evidence: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class AnalysisCreate(BaseModel):
+    """최종 품질 게이트를 통과한 비교 분석 저장 요청."""
+
+    analysis_date: date
+    school_a: SchoolSummary
+    school_b: SchoolSummary
+    agent_results: list[AgentResult] = Field(..., min_length=1)
+    winner: Literal["school_a", "school_b", "tie"]
+    overall_summary: str
+    comparison_result: dict[str, Any] = Field(default_factory=dict)
+
+
+class AnalysisResponse(AnalysisCreate):
+    analysis_id: int
